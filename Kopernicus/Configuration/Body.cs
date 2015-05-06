@@ -205,6 +205,9 @@ namespace Kopernicus
 			// Parser Post Apply Event
 			public void PostApply (ConfigNode node)
 			{
+                // Update any interrelated body properties
+                properties.PostApplyUpdate();
+
 				// If an orbit is defined, we orbit something
 				if (orbit != null) 
 				{

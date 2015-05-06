@@ -64,15 +64,25 @@ namespace Kopernicus
 			[ParserTarget("geeASL", optional = true)]
 			private NumericParser<double> geeASL 
 			{
-				set { celestialBody.GeeASL = value.value; }
+                set { celestialBody.GeeASL = value.value; hasGASL = true; }
 			}
+            private bool hasGASL = false;
 			
 			// Mass
 			[ParserTarget("mass", optional = true)]
 			private NumericParser<double> mass
 			{
-				set { celestialBody.Mass = value.value; }
+                set { celestialBody.Mass = value.value; hasMass = true; }
 			}
+            private bool hasMass = false;
+
+            // Grav Param
+            [ParserTarget("gravParameter", optional = true)]
+            private NumericParser<double> gravParameter
+            {
+                set { celestialBody.gMagnitudeAtCenter = celestialBody.gravParameter = value.value; hasGravParam = true; }
+            }
+            private bool hasGravParam = false;
 			
 			// Does the body rotate?
 			[ParserTarget("rotates", optional = true)]
@@ -199,6 +209,45 @@ namespace Kopernicus
 				// Create the science values cache
 				scienceValues = new ScienceValues (this.celestialBody.scienceValues);
 			}
+
+            public void PostApplyUpdate()
+            {
+                // Mass
+                if (hasGravParam)
+                    GravParamToOthers();
+                else if (hasMass)
+                    MassToOthers();
+                else
+                    GeeASLToOthers();
+            }
+            // Mass converters
+            private void GeeASLToOthers()
+            {
+                double rsq = celestialBody.Radius;
+                rsq *= rsq;
+                celestialBody.gMagnitudeAtCenter = celestialBody.GeeASL * 9.81 * rsq;
+                celestialBody.gravParameter = celestialBody.gMagnitudeAtCenter;
+                celestialBody.Mass = celestialBody.gravParameter * (1 / 6.674E-11);
+            }
+
+            // converts mass to Gee ASL using a body's radius.
+            private void MassToOthers()
+            {
+                double rsq = celestialBody.Radius;
+                rsq *= rsq;
+                celestialBody.GeeASL = celestialBody.Mass * (6.674E-11 / 9.81) / rsq;
+                celestialBody.gMagnitudeAtCenter = celestialBody.GeeASL * 9.81 * rsq;
+                celestialBody.gravParameter = celestialBody.gMagnitudeAtCenter;
+            }
+
+            private void GravParamToOthers()
+            {
+                double rsq = celestialBody.Radius;
+                rsq *= rsq;
+                celestialBody.Mass = celestialBody.gravParameter * (1 / 6.674E-11);
+                celestialBody.GeeASL = celestialBody.gravParameter / 9.81 / rsq;
+                celestialBody.gMagnitudeAtCenter = celestialBody.gravParameter;
+            }
 		}
 	}
 }
