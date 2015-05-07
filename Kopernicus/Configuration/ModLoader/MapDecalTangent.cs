@@ -152,7 +152,7 @@ namespace Kopernicus
                 public MapDecalTangent()
                 {
                     // Create the base mod
-                    GameObject modObject = new GameObject("MapDecal");
+                    GameObject modObject = new GameObject("MapDecalTangent");
                     modObject.transform.parent = Utility.Deactivator;
                     _mod = modObject.AddComponent<PQSMod_MapDecalTangent>();
                     base.mod = _mod;

@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Configuration\ModLoader\MapDecalTangent.cs" />
     <Compile Include="Configuration\ModLoader\OceanFX.cs" />
+    <Compile Include="Configuration\ModLoader\QuadEnhanceCoast.cs" />
     <Compile Include="Configuration\ModLoader\RemoveQuadMap.cs" />
     <Compile Include="Configuration\ModLoader\UVPlanetRelativePosition.cs" />
     <Compile Include="Configuration\ModLoader\MapDecal.cs" />
