@@ -248,6 +248,17 @@ namespace Kopernicus
                                 ksc.reorientInitialUp = KSPUtil.ParseVector3(node.GetValue("reorientInitialUp"));
                             if (node.HasValue("reorientToSphere"))
                                 bool.TryParse(node.GetValue("reorientToSphere"), out ksc.reorientToSphere);
+                            if (node.HasValue("lodvisibleRangeMult"))
+                            {
+                                double dtmp;
+                                if (double.TryParse(node.GetValue("lodvisibleRangeMult"), out dtmp))
+                                {
+                                    foreach (PQSCity.LODRange l in ksc.lod)
+                                    {
+                                        l.visibleRange = (float)(l.visibleRange * dtmp);
+                                    }
+                                }
+                            }
                             
                             if (node.HasValue("latitude") && node.HasValue("longitude"))
                             {
