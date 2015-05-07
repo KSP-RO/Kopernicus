@@ -135,9 +135,8 @@ namespace Kopernicus
 				this.pqsVersion = controllerRoot.AddComponent<PQS> ();
 
 				// I am at this time unable to determine some of the magic parameters which cause the PQS to work...
-				PSystemBody Laythe = Utility.FindBody (PSystemManager.Instance.systemPrefab.rootBody, "Laythe");
-				Utility.CopyObjectFields(Laythe.pqsVersion, pqsVersion);
-				pqsVersion.surfaceMaterial = Laythe.pqsVersion.surfaceMaterial;
+				Utility.CopyObjectFields(Templates.instance.pqs, pqsVersion);
+                pqsVersion.surfaceMaterial = Templates.instance.pqs.surfaceMaterial;
 
 				// These parameters magically make the PQS work for some reason.  Need to decipher...
 				/*pqsVersion.maxFrameTime = 0.075f;

@@ -232,6 +232,45 @@ namespace Kopernicus
                     generatedBody.pqsVersion.transform.name = name;
                     generatedBody.pqsVersion.gameObject.name = name;
 
+                    // set home as appropriate
+                    if (generatedBody.celestialBody.isHomeWorld)
+                    {
+                        PQSCity ksc = Templates.instance.ksc;
+                        ksc.sphere = generatedBody.pqsVersion;
+                        ksc.transform.parent = generatedBody.pqsVersion.transform;
+                        if (node.HasNode("KSC"))
+                        {
+                            if (node.HasValue("order"))
+                                int.TryParse(node.GetValue("order"), out ksc.order);
+                            if (node.HasValue("reorientFinalAngle"))
+                                float.TryParse(node.GetValue("reorientFinalAngle"), out ksc.reorientFinalAngle);
+                            if (node.HasValue("reorientInitialUp"))
+                                ksc.reorientInitialUp = KSPUtil.ParseVector3(node.GetValue("reorientInitialUp"));
+                            if (node.HasValue("reorientToSphere"))
+                                bool.TryParse(node.GetValue("reorientToSphere"), out ksc.reorientToSphere);
+                            
+                            if (node.HasValue("latitude") && node.HasValue("longitude"))
+                            {
+                                double lat, lon;
+                                double.TryParse(node.GetValue("latitude"), out lat);
+                                double.TryParse(node.GetValue("longitude"), out lon);
+
+                                ksc.repositionRadial = Utility.LLAtoECEF(lat, lon, 0, generatedBody.celestialBody.Radius);
+                            }
+                            else if (node.HasValue("repositionRadial"))
+                                ksc.repositionRadial = KSPUtil.ParseVector3(node.GetValue("repositionRadial"));
+                            
+                            if (node.HasValue("repositionRadiusOffset"))
+                                double.TryParse(node.GetValue("repositionRadiusOffset"), out ksc.repositionRadiusOffset);
+                            if (node.HasValue("repositionToSphere"))
+                                bool.TryParse(node.GetValue("repositionToSphere"), out ksc.repositionToSphere);
+                            if (node.HasValue("repositionToSphereSurface"))
+                                bool.TryParse(node.GetValue("repositionToSphereSurface"), out ksc.repositionToSphereSurface);
+                            if (node.HasValue("repositionToSphereSurfaceAddHeight"))
+                                bool.TryParse(node.GetValue("repositionToSphereSurfaceAddHeight"), out ksc.repositionToSphereSurfaceAddHeight);
+                        }
+                    }
+
                     // If an ocean was defined
                     if (ocean != null)
                     {

@@ -40,6 +40,7 @@ namespace Kopernicus
 	[KSPAddon(KSPAddon.Startup.PSystemSpawn, false)]
 	public class Injector : MonoBehaviour 
 	{
+        public Templates templates = null;
 		/**
 		 * Awake() is the first function called in the lifecycle of a Unity3D MonoBehaviour.  In the case of KSP,
 		 * it happens to be called right before the game's PSystem is instantiated from PSystemManager.Instance.systemPrefab
@@ -66,6 +67,10 @@ namespace Kopernicus
 
 			// Get the current time
 			DateTime start = DateTime.Now;
+            
+            // Grab templates
+            templates = new Templates();
+
 
 			// THIS IS WHERE THE MAGIC HAPPENS - OVERWRITE THE SYSTEM PREFAB SO KSP ACCEPTS OUR CUSTOM SOLAR SYSTEM AS IF IT WERE FROM SQUAD
 			PSystemManager.Instance.systemPrefab = (new Configuration.Loader()).Generate();

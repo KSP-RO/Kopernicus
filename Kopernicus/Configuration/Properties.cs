@@ -143,7 +143,7 @@ namespace Kopernicus
 			private List<Biome> biomes = new List<Biome>();
 
 			// DEPRECATED -- Biome definition texture (from GameDatabase)
-			[ParserTarget("biomeMap", optional = true)]
+			[ParserTarget("biomeMapD", optional = true)]
 			private Texture2DParser biomeMapDeprecated
 			{
 				set 

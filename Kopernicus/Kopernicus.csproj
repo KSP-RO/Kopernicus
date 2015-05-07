@@ -103,6 +103,7 @@
     <Compile Include="MaterialWrapper\PQSProjectionSurfaceQuad.cs" />
     <Compile Include="MaterialWrapper\PQSProjectionAerialQuadRelative.cs" />
     <Compile Include="StarLightSwitcher.cs" />
+    <Compile Include="Templates.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="Configuration\Loader.cs" />
     <Compile Include="Configuration\Body.cs" />

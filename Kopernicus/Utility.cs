@@ -523,6 +523,162 @@ namespace Kopernicus
             return result;
         }
 
+        // Convert latitude-longitude-altitude with body radius to a vector.
+        public static Vector3 LLAtoECEF(double lat, double lon, double alt, double radius)
+        {
+            const double degreesToRadians = Math.PI / 180.0;
+            lat = (lat - 90) * degreesToRadians;
+            lon *= degreesToRadians;
+            double x, y, z;
+            double n = radius; // for now, it's still a sphere, so just the radius
+            x = (n + alt) * -1.0 * Math.Sin(lat) * Math.Cos(lon);
+            y = (n + alt) * Math.Cos(lat); // for now, it's still a sphere, so no eccentricity
+            z = (n + alt) * -1.0 * Math.Sin(lat) * Math.Sin(lon);
+            return new Vector3((float)x, (float)y, (float)z);
+        }
+
+        public static Texture2D LoadTexture(string path, bool compress, bool upload, bool unreadable)
+        {
+            Texture2D map = null;
+            path = KSPUtil.ApplicationRootPath + path;
+            if (System.IO.File.Exists(path))
+            {
+                bool uncaught = true;
+                try
+                {
+                    if (path.ToLower().EndsWith(".dds"))
+                    {
+                        // Borrowed from stock KSP 1.0 DDS loader (hi Mike!)
+                        // Also borrowed the extra bits from Sarbian.
+                        byte[] buffer = System.IO.File.ReadAllBytes(path);
+                        System.IO.BinaryReader binaryReader = new System.IO.BinaryReader(new System.IO.MemoryStream(buffer));
+                        uint num = binaryReader.ReadUInt32();
+                        if (num == DDSHeaders.DDSValues.uintMagic)
+                        {
+
+                            DDSHeaders.DDSHeader dDSHeader = new DDSHeaders.DDSHeader(binaryReader);
+
+                            if (dDSHeader.ddspf.dwFourCC == DDSHeaders.DDSValues.uintDX10)
+                            {
+                                new DDSHeaders.DDSHeaderDX10(binaryReader);
+                            }
+
+                            bool alpha = (dDSHeader.dwFlags & 0x00000002) != 0;
+                            bool fourcc = (dDSHeader.dwFlags & 0x00000004) != 0;
+                            bool rgb = (dDSHeader.dwFlags & 0x00000040) != 0;
+                            bool alphapixel = (dDSHeader.dwFlags & 0x00000001) != 0;
+                            bool luminance = (dDSHeader.dwFlags & 0x00020000) != 0;
+                            bool rgb888 = dDSHeader.ddspf.dwRBitMask == 0x000000ff && dDSHeader.ddspf.dwGBitMask == 0x0000ff00 && dDSHeader.ddspf.dwBBitMask == 0x00ff0000;
+                            //bool bgr888 = dDSHeader.ddspf.dwRBitMask == 0x00ff0000 && dDSHeader.ddspf.dwGBitMask == 0x0000ff00 && dDSHeader.ddspf.dwBBitMask == 0x000000ff;
+                            bool rgb565 = dDSHeader.ddspf.dwRBitMask == 0x0000F800 && dDSHeader.ddspf.dwGBitMask == 0x000007E0 && dDSHeader.ddspf.dwBBitMask == 0x0000001F;
+                            bool argb4444 = dDSHeader.ddspf.dwABitMask == 0x0000f000 && dDSHeader.ddspf.dwRBitMask == 0x00000f00 && dDSHeader.ddspf.dwGBitMask == 0x000000f0 && dDSHeader.ddspf.dwBBitMask == 0x0000000f;
+                            bool rbga4444 = dDSHeader.ddspf.dwABitMask == 0x0000000f && dDSHeader.ddspf.dwRBitMask == 0x0000f000 && dDSHeader.ddspf.dwGBitMask == 0x000000f0 && dDSHeader.ddspf.dwBBitMask == 0x00000f00;
+
+                            bool mipmap = (dDSHeader.dwCaps & DDSHeaders.DDSPixelFormatCaps.MIPMAP) != (DDSHeaders.DDSPixelFormatCaps)0u;
+                            bool isNormalMap = ((dDSHeader.ddspf.dwFlags & 524288u) != 0u || (dDSHeader.ddspf.dwFlags & 2147483648u) != 0u);
+                            if (fourcc)
+                            {
+                                if (dDSHeader.ddspf.dwFourCC == DDSHeaders.DDSValues.uintDXT1)
+                                {
+                                    map = new Texture2D((int)dDSHeader.dwWidth, (int)dDSHeader.dwHeight, TextureFormat.DXT1, mipmap);
+                                    map.LoadRawTextureData(binaryReader.ReadBytes((int)(binaryReader.BaseStream.Length - binaryReader.BaseStream.Position)));
+                                }
+                                else if (dDSHeader.ddspf.dwFourCC == DDSHeaders.DDSValues.uintDXT3)
+                                {
+                                    map = new Texture2D((int)dDSHeader.dwWidth, (int)dDSHeader.dwHeight, (TextureFormat)11, mipmap);
+                                    map.LoadRawTextureData(binaryReader.ReadBytes((int)(binaryReader.BaseStream.Length - binaryReader.BaseStream.Position)));
+                                }
+                                else if (dDSHeader.ddspf.dwFourCC == DDSHeaders.DDSValues.uintDXT5)
+                                {
+                                    map = new Texture2D((int)dDSHeader.dwWidth, (int)dDSHeader.dwHeight, TextureFormat.DXT5, mipmap);
+                                    map.LoadRawTextureData(binaryReader.ReadBytes((int)(binaryReader.BaseStream.Length - binaryReader.BaseStream.Position)));
+                                }
+                                else if (dDSHeader.ddspf.dwFourCC == DDSHeaders.DDSValues.uintDXT2)
+                                {
+                                    Debug.Log("[Kopernicus]: DXT2 not supported" + path);
+                                }
+                                else if (dDSHeader.ddspf.dwFourCC == DDSHeaders.DDSValues.uintDXT4)
+                                {
+                                    Debug.Log("[Kopernicus]: DXT4 not supported: " + path);
+                                }
+                                else if (dDSHeader.ddspf.dwFourCC == DDSHeaders.DDSValues.uintDX10)
+                                {
+                                    Debug.Log("[Kopernicus]: DX10 dds not supported: " + path);
+                                }
+                            }
+                            else
+                            {
+                                TextureFormat textureFormat = TextureFormat.ARGB32;
+                                bool ok = true;
+                                if (rgb && (rgb888 /*|| bgr888*/))
+                                {
+                                    // RGB or RGBA format
+                                    textureFormat = alphapixel
+                                    ? TextureFormat.RGBA32
+                                    : TextureFormat.RGB24;
+                                }
+                                else if (rgb && rgb565)
+                                {
+                                    // Nvidia texconv B5G6R5_UNORM
+                                    textureFormat = TextureFormat.RGB565;
+                                }
+                                else if (rgb && alphapixel && argb4444)
+                                {
+                                    // Nvidia texconv B4G4R4A4_UNORM
+                                    textureFormat = TextureFormat.ARGB4444;
+                                }
+                                else if (rgb && alphapixel && rbga4444)
+                                {
+                                    textureFormat = TextureFormat.RGBA4444;
+                                }
+                                else if (!rgb && alpha != luminance)
+                                {
+                                    // A8 format or Luminance 8
+                                    textureFormat = TextureFormat.Alpha8;
+                                }
+                                else
+                                {
+                                    ok = false;
+                                    Debug.Log("[Kopernicus]: Only DXT1, DXT5, A8, RGB24, BGR24, RGBA32, BGBR32, RGB565, ARGB4444 and RGBA4444 are supported");
+                                }
+                                if (ok)
+                                {
+                                    map = new Texture2D((int)dDSHeader.dwWidth, (int)dDSHeader.dwHeight, textureFormat, mipmap);
+                                    map.LoadRawTextureData(binaryReader.ReadBytes((int)(binaryReader.BaseStream.Length - binaryReader.BaseStream.Position)));
+                                }
+
+                            }
+                            if (map != null)
+                                if (upload)
+                                    map.Apply(false, unreadable);
+                        }
+                    }
+                    else
+                    {
+                        map = new Texture2D(2, 2);
+                        map.LoadImage(System.IO.File.ReadAllBytes(path));
+                        if (compress)
+                            map.Compress(true);
+                        if (upload)
+                            map.Apply(false, unreadable);
+                    }
+                }
+                catch (Exception e)
+                {
+                    uncaught = false;
+                    Debug.Log("[Kopernicus]: failed to load " + path + " with exception " + e.Message);
+                }
+                if (map == null && uncaught)
+                {
+                    Debug.Log("[Kopernicus]: failed to load " + path);
+                }
+            }
+            else
+                Debug.Log("[Kopernicus]: texture does not exist! " + path);
+
+            return map;
+        }
+
         /** 
          * Enumerable class to iterate over parents.  Defined to allow us to use Linq
          * and predicates. 

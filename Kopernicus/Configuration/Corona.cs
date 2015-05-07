@@ -87,11 +87,10 @@ namespace Kopernicus
 
 			public Corona()
 			{
-				// We need to get the body for the Sun (to steal it's corona mesh)
-				PSystemBody sun = Utility.FindBody (PSystemManager.Instance.systemPrefab.rootBody, "Sun");
+				
 
 				// Clone a default Corona
-				corona = GameObject.Instantiate (sun.scaledVersion.GetComponentsInChildren<SunCoronas> (true).First ().gameObject) as GameObject;
+                corona = GameObject.Instantiate(Templates.instance.corona) as GameObject;
 				corona.transform.parent = Utility.Deactivator;
 				coronaComponent = corona.GetComponent<SunCoronas> ();
 
