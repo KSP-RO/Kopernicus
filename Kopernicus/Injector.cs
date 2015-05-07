@@ -104,7 +104,26 @@ namespace Kopernicus
 
 			// Fix the maximum viewing distance of the map view camera (get the farthest away something can be from the root object)
 			PSystemBody rootBody = PSystemManager.Instance.systemPrefab.rootBody;
-			double maximumDistance = rootBody.children.Max (b => (b.orbitDriver != null) ? b.orbitDriver.orbit.semiMajorAxis * (1 + b.orbitDriver.orbit.eccentricity) : 0);
+            double maximumDistance = 1000d; // rootBody.children.Max(b => (b.orbitDriver != null) ? b.orbitDriver.orbit.semiMajorAxis * (1 + b.orbitDriver.orbit.eccentricity) : 0);
+            if (rootBody != null)
+            {
+                maximumDistance = rootBody.celestialBody.Radius * 100d;
+                if(rootBody.children != null && rootBody.children.Count > 0)
+                {
+                    foreach (PSystemBody body in rootBody.children)
+                    {
+                        if (body.orbitDriver != null)
+                            maximumDistance = Math.Max(maximumDistance, body.orbitDriver.orbit.semiMajorAxis * (1d + body.orbitDriver.orbit.eccentricity));
+                        else
+                            Debug.Log("[Kopernicus]: Body " + body.name + " has no orbitdriver!");
+                    }
+                }
+                else
+                    Debug.Log("[Kopernicus]: Root body children null or 0");
+            }
+            else
+                Debug.Log("[Kopernicus]: Root body null!");
+            Debug.Log("Found max distance " + maximumDistance);
 			PlanetariumCamera.fetch.maxDistance = ((float)maximumDistance * 3.0f) / ScaledSpace.Instance.scaleFactor;
 
 			// Select the closest star to home

@@ -13,6 +13,8 @@ namespace Kopernicus
         public PQS pqsOcean = null;
         public PQS pqs = null;
         public GameObject corona;
+        public Dictionary<string, MapSO> mapsGray;
+        public Dictionary<string, MapSO> mapsRGB;
 
         public PQSMod_VoronoiCraters voronoiCraters;
 
@@ -52,6 +54,9 @@ namespace Kopernicus
                     break;
                 }
             }
+            mapsGray = new Dictionary<string, MapSO>();
+            mapsRGB = new Dictionary<string, MapSO>();
+
         }
     }
 }
