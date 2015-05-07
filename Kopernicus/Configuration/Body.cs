@@ -61,6 +61,18 @@ namespace Kopernicus
 			[PreApply]
 			[ParserTarget("name", optional = false)]
 			public string name { get; private set; }
+
+            [PreApply]
+            [ParserTarget("nameLater", optional = true)]
+            private string nameLater
+            {
+                set
+                {
+                    nameLater = value;
+                    if (!NameChanges.Names.ContainsKey(name))
+                        NameChanges.Names[name] = new NameChanger(name, value);
+                }
+            }
 			
 			// Flight globals index of this body - for computing reference id
 			[ParserTarget("flightGlobalsIndex", optional = true)]
@@ -208,6 +220,27 @@ namespace Kopernicus
                 // Update any interrelated body properties
                 properties.PostApplyUpdate();
 
+                // Homeworld
+                if (generatedBody.celestialBody.isHomeWorld)
+                {
+                    Logger.Default.Log("Found homeworld! Body " + name);
+                    Templates.instance.homeNode = node;
+                    Templates.instance.homeBody = generatedBody.celestialBody;
+                    Templates.instance.homePQS = pqs.pqsVersion;
+                }
+                /*else
+                {
+                    Logger.Default.Log("Body " + name + " is not homeworld. Val?" + node.GetNode("Properties").HasValue("isHomeWorld"));
+                }*/
+                if (NameChanges.Names.ContainsKey(name))
+                {
+                    NameChanger n = NameChanges.Names[name];
+                    n.AddComponent(generatedBody);
+                    n.AddGameObject(generatedBody.gameObject);
+                    
+
+                }
+
 				// If an orbit is defined, we orbit something
 				if (orbit != null) 
 				{
@@ -231,60 +264,6 @@ namespace Kopernicus
                     generatedBody.pqsVersion.name = name;
                     generatedBody.pqsVersion.transform.name = name;
                     generatedBody.pqsVersion.gameObject.name = name;
-
-                    // set home as appropriate
-                    if (generatedBody.celestialBody.isHomeWorld)
-                    {
-                        PSystemSetup.Instance.pqsToActivate = name; // we activate that one by default
-                        if (SpaceCenter.Instance != null)
-                            SpaceCenter.Instance.transform.parent = SpaceCenter.Instance.SpaceCenterTransform.parent = generatedBody.celestialBody.transform;
-
-                        PQSCity ksc = Templates.instance.ksc;
-                        ksc.sphere = generatedBody.pqsVersion;
-                        ksc.transform.parent = generatedBody.pqsVersion.transform;
-                        if (node.HasNode("KSC"))
-                        {
-                            if (node.HasValue("order"))
-                                int.TryParse(node.GetValue("order"), out ksc.order);
-                            if (node.HasValue("reorientFinalAngle"))
-                                float.TryParse(node.GetValue("reorientFinalAngle"), out ksc.reorientFinalAngle);
-                            if (node.HasValue("reorientInitialUp"))
-                                ksc.reorientInitialUp = KSPUtil.ParseVector3(node.GetValue("reorientInitialUp"));
-                            if (node.HasValue("reorientToSphere"))
-                                bool.TryParse(node.GetValue("reorientToSphere"), out ksc.reorientToSphere);
-                            if (node.HasValue("lodvisibleRangeMult"))
-                            {
-                                double dtmp;
-                                if (double.TryParse(node.GetValue("lodvisibleRangeMult"), out dtmp))
-                                {
-                                    foreach (PQSCity.LODRange l in ksc.lod)
-                                    {
-                                        l.visibleRange = (float)(l.visibleRange * dtmp);
-                                    }
-                                }
-                            }
-                            
-                            if (node.HasValue("latitude") && node.HasValue("longitude"))
-                            {
-                                double lat, lon;
-                                double.TryParse(node.GetValue("latitude"), out lat);
-                                double.TryParse(node.GetValue("longitude"), out lon);
-
-                                ksc.repositionRadial = Utility.LLAtoECEF(lat, lon, 0, generatedBody.celestialBody.Radius);
-                            }
-                            else if (node.HasValue("repositionRadial"))
-                                ksc.repositionRadial = KSPUtil.ParseVector3(node.GetValue("repositionRadial"));
-                            
-                            if (node.HasValue("repositionRadiusOffset"))
-                                double.TryParse(node.GetValue("repositionRadiusOffset"), out ksc.repositionRadiusOffset);
-                            if (node.HasValue("repositionToSphere"))
-                                bool.TryParse(node.GetValue("repositionToSphere"), out ksc.repositionToSphere);
-                            if (node.HasValue("repositionToSphereSurface"))
-                                bool.TryParse(node.GetValue("repositionToSphereSurface"), out ksc.repositionToSphereSurface);
-                            if (node.HasValue("repositionToSphereSurfaceAddHeight"))
-                                bool.TryParse(node.GetValue("repositionToSphereSurfaceAddHeight"), out ksc.repositionToSphereSurfaceAddHeight);
-                        }
-                    }
 
                     // If an ocean was defined
                     if (ocean != null)

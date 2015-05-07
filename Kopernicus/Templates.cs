@@ -16,8 +16,14 @@ namespace Kopernicus
         public Dictionary<string, MapSO> mapsGray;
         public Dictionary<string, MapSO> mapsRGB;
 
-        public PQSMod_VoronoiCraters voronoiCraters;
+        public ConfigNode homeNode;
+        public CelestialBody homeBody;
+        public PQS homePQS;
+        public Dictionary<string, NameChanger> nameChanger;
 
+        // PQSmods
+        public PQSMod_VoronoiCraters voronoiCraters;
+        
         public Templates()
         {
             instance = this;
@@ -51,11 +57,14 @@ namespace Kopernicus
                 if (c.name == "KSC")
                 {
                     ksc = c;
+                    Logger.Default.Log("Found KSC");
                     break;
                 }
             }
+
             mapsGray = new Dictionary<string, MapSO>();
             mapsRGB = new Dictionary<string, MapSO>();
+            nameChanger = new Dictionary<string, NameChanger>();
 
         }
     }

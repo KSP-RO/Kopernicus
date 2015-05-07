@@ -41,6 +41,16 @@ namespace Kopernicus
 	public class Injector : MonoBehaviour 
 	{
         public Templates templates = null;
+        public NameChanges nameChange = null;
+        static private void DumpUpwards(Transform t, string prefix)
+        {
+            Logger.Default.Log(prefix + "Transform " + t.name);
+            foreach(Component c in t.GetComponents<Component>())
+                Logger.Default.Log(prefix + " has component " + c.name + " of type " + c.GetType().FullName);
+            if(t.parent != null)
+                DumpUpwards(t.parent, prefix + "  ");
+      
+        }
 		/**
 		 * Awake() is the first function called in the lifecycle of a Unity3D MonoBehaviour.  In the case of KSP,
 		 * it happens to be called right before the game's PSystem is instantiated from PSystemManager.Instance.systemPrefab
@@ -68,8 +78,9 @@ namespace Kopernicus
 			// Get the current time
 			DateTime start = DateTime.Now;
             
-            // Grab templates
+            // Grab templates, create namechanger
             templates = new Templates();
+            nameChange = new NameChanges();
 
 
 			// THIS IS WHERE THE MAGIC HAPPENS - OVERWRITE THE SYSTEM PREFAB SO KSP ACCEPTS OUR CUSTOM SOLAR SYSTEM AS IF IT WERE FROM SQUAD
@@ -80,7 +91,17 @@ namespace Kopernicus
 			archivesController.systemPrefab = PSystemManager.Instance.systemPrefab;
 
 			// Clear space center instance so it will accept nouveau Kerbin
-			SpaceCenter.Instance = null;
+			//SpaceCenter.Instance = null;
+            Logger.Default.Log("*SC* is it null? " + (SpaceCenter.Instance == null).ToString());
+            if (SpaceCenter.Instance != null)
+            {
+                SpaceCenter sc = SpaceCenter.Instance;
+                Logger.Default.Log("** SpaceCenter");
+                DumpUpwards(sc.transform, "");
+            }
+
+            // Set home stuff
+            ApplyHome(Templates.instance.homeNode, Templates.instance.homePQS, Templates.instance.homeBody);
 
 			// Add a handler so that we can do post spawn fixups.  
 			PSystemManager.Instance.OnPSystemReady.Add(PostSpawnFixups);
@@ -139,6 +160,100 @@ namespace Kopernicus
 			Logger.Default.Log("Injector.OnDestroy(): Complete");
 			Logger.Default.Flush ();
 		}
+
+        public static void ApplyHome(ConfigNode node, PQS pqs, CelestialBody body)
+        {
+            if (node == null)
+            {
+                Logger.Default.Log("ApplyHome: node null!");
+                return;
+            }
+            if (pqs == null)
+            {
+                Logger.Default.Log("ApplyHome: pqs null!");
+                return;
+            }
+            if (body == null)
+            {
+                Logger.Default.Log("ApplyHome: body null!");
+                return;
+            }
+            if (Templates.instance == null)
+            {
+                Logger.Default.Log("ApplyHome: Templates null!");
+                return;
+            }
+            Logger.Default.Log("Applying home to body " + body.name);
+            PQSCity ksc = Templates.instance.ksc;
+            if (ksc != null)
+            {
+                ksc.sphere = pqs;
+                ksc.transform.parent = pqs.transform;
+                PSystemSetup.Instance.pqsToActivate = pqs.gameObject.name;
+                if (node.HasNode("KSC"))
+                {
+                    if (node.HasValue("order"))
+                        int.TryParse(node.GetValue("order"), out ksc.order);
+                    if (node.HasValue("reorientFinalAngle"))
+                        float.TryParse(node.GetValue("reorientFinalAngle"), out ksc.reorientFinalAngle);
+                    if (node.HasValue("reorientInitialUp"))
+                        ksc.reorientInitialUp = KSPUtil.ParseVector3(node.GetValue("reorientInitialUp"));
+                    if (node.HasValue("reorientToSphere"))
+                        bool.TryParse(node.GetValue("reorientToSphere"), out ksc.reorientToSphere);
+                    if (node.HasValue("lodvisibleRangeMult"))
+                    {
+                        double dtmp;
+                        if (double.TryParse(node.GetValue("lodvisibleRangeMult"), out dtmp))
+                        {
+                            foreach (PQSCity.LODRange l in ksc.lod)
+                            {
+                                l.visibleRange = (float)(l.visibleRange * dtmp);
+                            }
+                        }
+                    }
+
+                    if (node.HasValue("latitude") && node.HasValue("longitude"))
+                    {
+                        double lat, lon;
+                        double.TryParse(node.GetValue("latitude"), out lat);
+                        double.TryParse(node.GetValue("longitude"), out lon);
+
+                        ksc.repositionRadial = Utility.LLAtoECEF(lat, lon, 0, body.Radius);
+                    }
+                    else if (node.HasValue("repositionRadial"))
+                        ksc.repositionRadial = KSPUtil.ParseVector3(node.GetValue("repositionRadial"));
+
+                    if (node.HasValue("repositionRadiusOffset"))
+                        double.TryParse(node.GetValue("repositionRadiusOffset"), out ksc.repositionRadiusOffset);
+                    if (node.HasValue("repositionToSphere"))
+                        bool.TryParse(node.GetValue("repositionToSphere"), out ksc.repositionToSphere);
+                    if (node.HasValue("repositionToSphereSurface"))
+                        bool.TryParse(node.GetValue("repositionToSphereSurface"), out ksc.repositionToSphereSurface);
+                    if (node.HasValue("repositionToSphereSurfaceAddHeight"))
+                        bool.TryParse(node.GetValue("repositionToSphereSurfaceAddHeight"), out ksc.repositionToSphereSurfaceAddHeight);
+
+                    ksc.Orientate();
+                }
+            }
+            else
+                Logger.Default.Log("No KSC!");
+            if (SpaceCenter.Instance != null)
+            {
+                SpaceCenter sc = SpaceCenter.Instance;
+                sc.transform.parent = sc.SpaceCenterTransform.parent = pqs.transform;
+                sc.transform.position = ksc.transform.position;
+                sc.transform.rotation = ksc.transform.rotation;
+            }
+            else
+            {
+                Debug.Log("[Kopernicus]: No spacecenter");
+                Logger.Default.Log("No spacecenter when applying home for body " + body.name);
+                /*GameObject scObject = new GameObject("SpaceCenter");
+                scObject.transform.parent = pqs.transform;
+                GameObject.DontDestroyOnLoad(scObject);
+                SpaceCenter sc = scObject.AddComponent<SpaceCenter>();*/
+            }
+        }
 	}
 } //namespace
 
