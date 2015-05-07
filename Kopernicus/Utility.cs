@@ -540,7 +540,7 @@ namespace Kopernicus
         public static Texture2D LoadTexture(string path, bool compress, bool upload, bool unreadable)
         {
             Texture2D map = null;
-            path = KSPUtil.ApplicationRootPath + path;
+            path = KSPUtil.ApplicationRootPath + "GameData/" + path;
             if (System.IO.File.Exists(path))
             {
                 bool uncaught = true;
