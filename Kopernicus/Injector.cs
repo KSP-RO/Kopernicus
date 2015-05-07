@@ -42,7 +42,7 @@ namespace Kopernicus
 	{
         public Templates templates = null;
         public NameChanges nameChange = null;
-        static private void DumpUpwards(Transform t, string prefix)
+        static public void DumpUpwards(Transform t, string prefix)
         {
             Logger.Default.Log(prefix + "Transform " + t.name);
             foreach(Component c in t.GetComponents<Component>())
@@ -239,6 +239,7 @@ namespace Kopernicus
                 Logger.Default.Log("No KSC!");
             if (SpaceCenter.Instance != null)
             {
+                Debug.Log("[Kopernicus]: Setting spacecenter");
                 SpaceCenter sc = SpaceCenter.Instance;
                 sc.transform.parent = sc.SpaceCenterTransform.parent = pqs.transform;
                 sc.transform.position = ksc.transform.position;

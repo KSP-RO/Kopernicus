@@ -30,6 +30,7 @@ using System;
 using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 using UnityEngine;
 
@@ -681,6 +682,56 @@ namespace Kopernicus
                 Debug.Log("[Kopernicus]: texture does not exist! " + path);
 
             return map;
+        }
+
+        /// <summary>
+        /// Will remove all mods of given types (or all, if types null)
+        /// </summary>
+        /// <param name="types">If null, will remove all mods except blacklisted mods</param>
+        /// <param name="p">PQS to remove from</param>
+        /// <param name="blacklist">list of mod types to not remove (optional)</param>
+        public static void RemoveModsOfType(List<Type> types, PQS p, List<Type> blacklist = null)
+        {
+            List<PQSMod> cpMods = p.GetComponentsInChildren<PQSMod>(true).ToList();
+            if (blacklist == null)
+            {
+                blacklist = new List<Type>();
+                if(types == null || !types.Contains(typeof(PQSMod_CelestialBodyTransform)))
+                    blacklist.Add(typeof(PQSMod_CelestialBodyTransform));
+                if(types == null || !types.Contains(typeof(PQSMod_MaterialSetDirection)))
+                    blacklist.Add(typeof(PQSMod_MaterialSetDirection));
+                if(types == null || !types.Contains(typeof(PQSMod_UVPlanetRelativePosition)))
+                    blacklist.Add(typeof(PQSMod_UVPlanetRelativePosition));
+                if(types == null || !types.Contains(typeof(PQSMod_QuadMeshColliders)))
+                    blacklist.Add(typeof(PQSMod_QuadMeshColliders));
+            }
+
+            if (types == null)
+            {
+                types = new List<Type>();
+                foreach(PQSMod m in cpMods)
+                {
+                    Type mType = m.GetType();
+                    if (!types.Contains(mType) && !blacklist.Contains(mType))
+                        types.Add(mType);
+                }
+            }
+            foreach (Type mType in types)
+            {
+                List<PQSMod> currentMods = cpMods.Where(m => m.GetType() == mType).ToList();
+                while (currentMods.Count > 0)
+                {
+                    PQSMod delMod = currentMods[0]; //p.GetComponentsInChildren(mType, true)[0] as PQSMod;
+                    if (delMod.GetType() != typeof(PQSCity) || delMod.name != "KSC")
+                    {
+                        delMod.transform.parent = null;
+                        delMod.sphere = null;
+                        PQSMod.Destroy(delMod);
+                        cpMods.Remove(currentMods[0]);
+                    }
+                    currentMods.RemoveAt(0);
+                }
+            }
         }
 
         /** 

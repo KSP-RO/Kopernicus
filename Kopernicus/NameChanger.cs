@@ -24,12 +24,14 @@ namespace Kopernicus
 
         public void AddComponent(Component c)
         {
-            components.Add(c);
+            if(c != null)
+                components.Add(c);
         }
 
         public void AddGameObject(GameObject g)
         {
-            gameObjects.Add(g);
+            if(g != null)
+                gameObjects.Add(g);
         }
 
         public void SetBody(CelestialBody b)
@@ -40,14 +42,18 @@ namespace Kopernicus
         public void Apply()
         {
             foreach (Component c in components)
-                c.name = c.name.Replace(oldName, newName);
+                if(c != null)
+                    c.name = c.name.Replace(oldName, newName);
             foreach (GameObject g in gameObjects)
-                g.name = g.name.Replace(oldName, newName);
+                if(g != null)
+                    g.name = g.name.Replace(oldName, newName);
 
             components.Clear();
             gameObjects.Clear();
             foreach (CelestialBody b in FlightGlobals.Bodies)
             {
+                if (b.bodyName != oldName)
+                    continue;
                 b.bodyName = b.bodyName.Replace(oldName, newName);
                 b.gameObject.name = b.gameObject.name.Replace(oldName, newName);
                 b.transform.name = b.transform.name.Replace(oldName, newName);
@@ -71,7 +77,8 @@ namespace Kopernicus
             {
                 foreach (Transform t in ScaledSpace.Instance.scaledSpaceTransforms)
                 {
-                    t.name = t.name.Replace(oldName, newName);
+                    if(t.name == oldName)
+                        t.name = t.name.Replace(oldName, newName);
                 }
             }
         }
@@ -99,10 +106,35 @@ namespace Kopernicus
     }
 
     [KSPAddon(KSPAddon.Startup.MainMenu, true)]
-    public class NameChangeRunner
+    public class NameChangeRunner : MonoBehaviour
     {
         public void Start()
         {
+            //Dumps
+            PQSCity ksc = null;
+            foreach (PQSCity p in Resources.FindObjectsOfTypeAll<PQSCity>())
+            {
+                if (p.name == "KSC")
+                {
+                    ksc = p;
+                    break;
+                }
+            }
+            if (ksc != null)
+            {
+                Logger.Default.Log("Found KSC!");
+                Logger.Default.Log("Transform = transform of go? " + (ksc.gameObject.transform == ksc.transform ? "Yes" : "No"));
+                Logger.Default.Log("Transform name = " + ksc.transform.name + ", go name " + ksc.gameObject.name);
+                Injector.DumpUpwards(ksc.transform, "*");
+            }
+            if (SpaceCenter.Instance != null)
+            {
+                SpaceCenter sc = SpaceCenter.Instance;
+                Logger.Default.Log("Found Space center!");
+                Logger.Default.Log("Transform = transform of go? " + (sc.gameObject.transform == sc.transform ? "Yes" : "No"));
+                Logger.Default.Log("Transform name = " + sc.transform.name + ", go name " + sc.gameObject.name);
+                Injector.DumpUpwards(sc.transform, "*");
+            }
             if (NameChanges.instance == null)
             {
                 Debug.Log("*NameChanger* ERROR instance is null!");

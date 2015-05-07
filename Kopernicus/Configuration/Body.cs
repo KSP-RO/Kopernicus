@@ -237,7 +237,25 @@ namespace Kopernicus
                     NameChanger n = NameChanges.Names[name];
                     n.AddComponent(generatedBody);
                     n.AddGameObject(generatedBody.gameObject);
-                    
+                    n.AddComponent(generatedBody.transform);
+                    if (generatedBody.pqsVersion != null)
+                    {
+                        n.AddComponent(generatedBody.pqsVersion);
+                        n.AddGameObject(generatedBody.pqsVersion.gameObject);
+                        n.AddComponent(generatedBody.pqsVersion.transform);
+                        foreach (PQS p in generatedBody.pqsVersion.GetComponentsInChildren(typeof(PQS), true))
+                        {
+                            n.AddComponent(p);
+                            n.AddComponent(p.transform);
+                            n.AddGameObject(p.gameObject);
+                        }
+                    }
+                    n.AddComponent(generatedBody.celestialBody);
+                    n.AddComponent(generatedBody.celestialBody.transform);
+                    n.AddComponent(generatedBody.celestialBody.bodyTransform);
+                    n.AddGameObject(generatedBody.celestialBody.gameObject);
+                    n.AddGameObject(generatedBody.scaledVersion);
+                    n.AddComponent(generatedBody.transform);
 
                 }
 

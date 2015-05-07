@@ -53,6 +53,15 @@ namespace Kopernicus
             public Color mapOceanColor;
             public double mapOceanHeight = Double.NaN;
 
+            private PQSMod_UVPlanetRelativePosition uvs;
+
+            [ParserTarget("removeAllMods", optional = true)]
+            private NumericParser<bool> removeAllMods
+            {
+                set { removeAll = value.value; }
+            }
+            private bool removeAll = false;
+
             // We have an ocean?
             [ParserTarget("ocean", optional = true)]
             private NumericParser<bool> ocean
@@ -156,6 +165,15 @@ namespace Kopernicus
                 // Load fallback material into the PQS            
                 oceanPQS.fallbackMaterial = fallbackMaterial;
                 fallbackMaterial.name = Guid.NewGuid().ToString();
+
+                // Create the UV planet relative position
+                GameObject mod = new GameObject("_Material_SurfaceQuads");
+                mod.transform.parent = oceanRoot.transform;
+                uvs = mod.AddComponent<PQSMod_UVPlanetRelativePosition>();
+                uvs.sphere = oceanPQS;
+                uvs.requirements = PQS.ModiferRequirements.Default;
+                uvs.modEnabled = true;
+                uvs.order = 999999;
 			}
 
 
@@ -166,25 +184,21 @@ namespace Kopernicus
 
 			void IParserEventSubscriber.PostApply(ConfigNode node)
 			{
-                List<PQSMod> cpMods = oceanPQS.GetComponentsInChildren<PQSMod>(true).ToList();
-				// Add all created mods to the PQS
+                List<Type> typesToRemove = null;
+                if (!removeAll)
+                {
+                    typesToRemove = new List<Type>();
+                    foreach (ModLoader.ModLoader loader in mods)
+                    {
+                        typesToRemove.Add(loader.mod.GetType());
+                    }
+                }
+                Utility.RemoveModsOfType(typesToRemove, oceanPQS);
                 foreach (ModLoader.ModLoader loader in mods)
                 {
-                    List<PQSMod> currentMods = cpMods.Where(m => m.GetType() == loader.mod.GetType()).ToList();
-                    if (currentMods.Count > 0)
-                    {
-                        for (int i = 0; i < currentMods.Count; i++)
-                        {
-                            PQSMod delMod = oceanPQS.GetComponentsInChildren(currentMods[i].GetType(), true)[i] as PQSMod;
-                            delMod.transform.parent = null;
-                            delMod.sphere = null;
-                            PQSMod.Destroy(delMod);
-                            cpMods.Remove(currentMods[i]);
-                        }
-                    }
                     loader.mod.transform.parent = oceanPQS.transform;
                     loader.mod.sphere = oceanPQS;
-                    Logger.Active.Log("OceanPQS.PostApply(ConfigNode): Added PQS Mod => " + loader.mod.GetType());
+                    Logger.Active.Log("PQSLoader.PostApply(ConfigNode): Added OceanPQS Mod => " + loader.mod.GetType());
                 }
 
 				// Make sure all the PQSMods exist in Localspace
