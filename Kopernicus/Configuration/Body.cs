@@ -235,6 +235,10 @@ namespace Kopernicus
                     // set home as appropriate
                     if (generatedBody.celestialBody.isHomeWorld)
                     {
+                        PSystemSetup.Instance.pqsToActivate = name; // we activate that one by default
+                        if (SpaceCenter.Instance != null)
+                            SpaceCenter.Instance.transform.parent = SpaceCenter.Instance.SpaceCenterTransform.parent = generatedBody.celestialBody.transform;
+
                         PQSCity ksc = Templates.instance.ksc;
                         ksc.sphere = generatedBody.pqsVersion;
                         ksc.transform.parent = generatedBody.pqsVersion.transform;
