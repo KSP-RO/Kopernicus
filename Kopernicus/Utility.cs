@@ -548,7 +548,6 @@ namespace Kopernicus
                 {
                     if (path.ToLower().EndsWith(".dds"))
                     {
-                        Debug.Log("Loading " + path);
                         // Borrowed from stock KSP 1.0 DDS loader (hi Mike!)
                         // Also borrowed the extra bits from Sarbian.
                         byte[] buffer = System.IO.File.ReadAllBytes(path);
@@ -579,7 +578,6 @@ namespace Kopernicus
                             bool isNormalMap = ((dDSHeader.ddspf.dwFlags & 524288u) != 0u || (dDSHeader.ddspf.dwFlags & 2147483648u) != 0u);
                             if (fourcc)
                             {
-                                Debug.Log("FourCC");
                                 if (dDSHeader.ddspf.dwFourCC == DDSHeaders.DDSValues.uintDXT1)
                                 {
                                     map = new Texture2D((int)dDSHeader.dwWidth, (int)dDSHeader.dwHeight, TextureFormat.DXT1, mipmap);
@@ -607,10 +605,11 @@ namespace Kopernicus
                                 {
                                     Debug.Log("[Kopernicus]: DX10 dds not supported: " + path);
                                 }
+                                else
+                                    fourcc = false;
                             }
-                            else
+                            if(!fourcc)
                             {
-                                Debug.Log("Not fourCC");
                                 TextureFormat textureFormat = TextureFormat.ARGB32;
                                 bool ok = true;
                                 if (rgb && (rgb888 /*|| bgr888*/))
@@ -642,7 +641,7 @@ namespace Kopernicus
                                 else
                                 {
                                     ok = false;
-                                    Debug.Log("[Kopernicus]: Only DXT1, DXT5, A8, RGB24, BGR24, RGBA32, BGBR32, RGB565, ARGB4444 and RGBA4444 are supported");
+                                    Debug.Log("[Kopernicus]: Only DXT1, DXT5, A8, RGB24, RGBA32, RGB565, ARGB4444 and RGBA4444 are supported");
                                 }
                                 if (ok)
                                 {
