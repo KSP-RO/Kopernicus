@@ -253,6 +253,27 @@ namespace Kopernicus
             }
         }
 
+        // slightly different:
+        static public void DumpUpwards(Transform t, string prefix)
+        {
+            Logger.Default.Log(prefix + "Transform " + t.name);
+            foreach (Component c in t.GetComponents<Component>())
+                Logger.Default.Log(prefix + " has component " + c.name + " of type " + c.GetType().FullName);
+            if (t.parent != null)
+                DumpUpwards(t.parent, prefix + "  ");
+
+        }
+        static public void DumpDownwards(Transform t, string prefix)
+        {
+            Logger.Default.Log(prefix + "Transform " + t.name);
+            foreach (Component c in t.GetComponents<Component>())
+                Logger.Default.Log(prefix + " has component " + c.name + " of type " + c.GetType().FullName);
+            if (t.childCount > 0)
+                for (int i = 0; i < t.childCount; ++i)
+                    DumpDownwards(t.GetChild(i), prefix + "  ");
+
+        }
+
         public static void CopyMesh(Mesh source, Mesh dest)
         {
             //ProfileTimer.Push("CopyMesh");
@@ -692,33 +713,42 @@ namespace Kopernicus
         /// <param name="blacklist">list of mod types to not remove (optional)</param>
         public static void RemoveModsOfType(List<Type> types, PQS p, List<Type> blacklist = null)
         {
+            Logger.Active.Log("Removing mods from pqs " + p.name);
             List<PQSMod> cpMods = p.GetComponentsInChildren<PQSMod>(true).ToList();
+            bool addTypes = types == null;
+            if(addTypes)
+                types = new List<Type>();
             if (blacklist == null)
             {
+                Logger.Active.Log("Creating blacklist");
                 blacklist = new List<Type>();
-                if(types == null || !types.Contains(typeof(PQSMod_CelestialBodyTransform)))
+                if(!types.Contains(typeof(PQSMod_CelestialBodyTransform)))
                     blacklist.Add(typeof(PQSMod_CelestialBodyTransform));
-                if(types == null || !types.Contains(typeof(PQSMod_MaterialSetDirection)))
+                if(!types.Contains(typeof(PQSMod_MaterialSetDirection)))
                     blacklist.Add(typeof(PQSMod_MaterialSetDirection));
-                if(types == null || !types.Contains(typeof(PQSMod_UVPlanetRelativePosition)))
+                if(!types.Contains(typeof(PQSMod_UVPlanetRelativePosition)))
                     blacklist.Add(typeof(PQSMod_UVPlanetRelativePosition));
-                if(types == null || !types.Contains(typeof(PQSMod_QuadMeshColliders)))
+                if(!types.Contains(typeof(PQSMod_QuadMeshColliders)))
                     blacklist.Add(typeof(PQSMod_QuadMeshColliders));
+                Logger.Active.Log("Blacklist count = " + blacklist.Count);
             }
 
-            if (types == null)
+            if (addTypes)
             {
-                types = new List<Type>();
+                Logger.Active.Log("Adding all found PQSMods in pqs " + p.name);
                 foreach(PQSMod m in cpMods)
                 {
                     Type mType = m.GetType();
                     if (!types.Contains(mType) && !blacklist.Contains(mType))
+                    {
+                        Logger.Active.Log("Adding to removelist: " + mType);
                         types.Add(mType);
+                    }
                 }
             }
             foreach (Type mType in types)
             {
-                List<PQSMod> currentMods = cpMods.Where(m => m.GetType() == mType).ToList();
+                /*List<PQSMod> currentMods = cpMods.Where(m => m.GetType() == mType).ToList();
                 while (currentMods.Count > 0)
                 {
                     PQSMod delMod = currentMods[0]; //p.GetComponentsInChildren(mType, true)[0] as PQSMod;
@@ -730,8 +760,67 @@ namespace Kopernicus
                         cpMods.Remove(currentMods[0]);
                     }
                     currentMods.RemoveAt(0);
+                }*/
+                List<GameObject> toCheck = new List<GameObject>();
+                PQSMod delMod = p.GetComponentsInChildren(mType, true).FirstOrDefault() as PQSMod;
+                if (delMod != null)
+                {
+                    toCheck.Add(delMod.gameObject);
+                    delMod.sphere = null;
+                    PQSMod.DestroyImmediate(delMod);
+                }
+                int oCount = toCheck.Count;
+                int nCount = oCount;
+                do
+                {
+                    oCount = nCount;
+                    List<GameObject> toDestroy = new List<GameObject>();
+                    foreach (GameObject go in toCheck)
+                    {
+                        if (go.transform.childCount == 0)
+                        {
+                            Component[] comps = go.GetComponents<Component>();
+                            if (comps.Length == 0 || (comps.Length == 1 && comps[0].GetType() == typeof(Transform)))
+                                toDestroy.Add(go);
+                        }
+                    }
+                    foreach (GameObject go in toDestroy)
+                    {
+                        toCheck.Remove(go);
+                        GameObject.DestroyImmediate(go);
+                    }
+                    nCount = toCheck.Count;
+                } while (nCount != oCount && nCount > 0);
+            }
+        }
+
+        static public void CBTCheck(PSystemBody body)
+        {
+            if (body.pqsVersion != null)
+            {
+                if (body.pqsVersion.GetComponentsInChildren<PQSMod_CelestialBodyTransform>().Length > 0)
+                    Logger.Default.Log("Body " + body.name + " has CBT.");
+                else
+                {
+                    PQSMod_CelestialBodyTransform cbt = body.pqsVersion.GetComponentsInChildren(typeof(PQSMod_CelestialBodyTransform), true).FirstOrDefault() as PQSMod_CelestialBodyTransform;
+                    if (cbt == null)
+                    {
+                        Logger.Default.Log("Body " + body.name + " *** LACKS CBT ***");
+                        DumpDownwards(body.pqsVersion.transform, "*");
+                    }
+                    else
+                    {
+                        cbt.gameObject.active = true;
+                        cbt.enabled = true;
+                        cbt.modEnabled = true;
+                        cbt.sphere = body.pqsVersion;
+                        Logger.Default.Log("Body " + body.name + " lacks active CBT, activated.");
+                    }
                 }
             }
+            if (body.children != null)
+                foreach (PSystemBody b in body.children)
+                    CBTCheck(b);
         }
 
         /** 

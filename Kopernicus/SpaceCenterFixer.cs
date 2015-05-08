@@ -9,16 +9,41 @@ using UnityEngine;
 namespace Kopernicus
 {
     [KSPAddon(KSPAddon.Startup.SpaceCentre, true)]
-    public class SpaceCenterCameraFixer : MonoBehaviour
+    public class SpaceCenterFixer : MonoBehaviour
     {
-        static public string pqsName = "Kerbin";
+        static public string pqsName = "Kerbin"; // will be changed to new homeworld in Injector.
         public void Start()
+        {
+            if (pqsName != "Kerbin")
+            {
+                FixCameras();
+                FixSpaceCenterMain();
+            }
+        }
+        protected void FixSpaceCenterMain()
+        {
+            SpaceCenterMain[] mains = Resources.FindObjectsOfTypeAll<SpaceCenterMain>();
+            if (mains != null && mains.Length > 0)
+            {
+                foreach (SpaceCenterMain m in mains)
+                {
+                    List<string> newlist = new List<string>();
+                    foreach (string s in m.gameObjectsToDisable)
+                    {
+                        newlist.Add(s.Replace("Kerbin", pqsName));
+                    }
+                    m.gameObjectsToDisable = newlist;
+                }
+            }
+            else
+                Debug.Log("[Kopernicus]: No objects of type SpaceCenterMain found to fix");
+        }
+        protected void FixCameras()
         {
             SpaceCenterCamera[] cams = Resources.FindObjectsOfTypeAll<SpaceCenterCamera>();
             Type camType = typeof(SpaceCenterCamera);
             if (cams != null && cams.Length > 0)
             {
-                Debug.Log("*CF cams length = " + cams.Length);
                 foreach (SpaceCenterCamera cam in cams)
                 {
                     cam.pqsName = pqsName;
@@ -28,7 +53,7 @@ namespace Kopernicus
             }
             else
             {
-                Debug.Log("*CF cams null or empty");
+                Debug.Log("[Kopernicus]: no cameras of type SpaceCenterCamera");
             }
 
 
@@ -40,7 +65,6 @@ namespace Kopernicus
             if (ksc != null)
             {
                 resetHeight = true;
-                Debug.Log("*CF Found KSC, resetting alt");
                 if (ksc.repositionToSphere || ksc.repositionToSphereSurface)
                 {
                     double nomHeight = ksc.sphere.GetSurfaceHeight((Vector3d)ksc.repositionRadial.normalized) - ksc.sphere.radius;
@@ -57,21 +81,21 @@ namespace Kopernicus
             }
             if (cams2 != null && cams2.Length > 0)
             {
-                Debug.Log("*CF cams2 length = " + cams.Length);
+                Debug.Log("[Kopernicus]: Found " + cams2.Length + " cameras of type SpaceCenterCamera2. Fixing.");
                 foreach (SpaceCenterCamera2 cam in cams2)
                 {
                     cam.pqsName = pqsName;
-                    camType2.GetMethod("Start", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(cam, null);
                     if (resetHeight)
                     {
-                        cam.altitudeInitial = (float)altitudeInitial;
-                        cam.ResetCamera();
+                        //cam.altitudeInitial = (float)altitudeInitial;
+                        cam.altitudeInitial = 10f;
                     }
+                    camType2.GetMethod("Start", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(cam, null);
                 }
             }
             else
             {
-                Debug.Log("*CF cams2 null or empty");
+                Debug.Log("[Kopernicus]: no cameras of type SpaceCenterCamera2");
             }
         }
     }

@@ -73,6 +73,17 @@ namespace Kopernicus
                         NameChanges.Names[name] = new NameChanger(name, value);
                 }
             }
+
+            [ParserTarget("cbNameLater", optional = true)]
+            private string cbNameLater
+            {
+                set
+                {
+                    cbNameLater = value;
+                    if (!NameChanges.CBNames.ContainsKey(name))
+                        NameChanges.CBNames[name] = new CBNameChanger(name, value);
+                }
+            }
 			
 			// Flight globals index of this body - for computing reference id
 			[ParserTarget("flightGlobalsIndex", optional = true)]
@@ -187,10 +198,10 @@ namespace Kopernicus
 					generatedBody.flightGlobalsIndex = 0;
 
 					// Create the celestial body
-					/*GameObject generatedBodyProperties = new GameObject (name);
-					generatedBodyProperties.transform.parent = generatedBodyGameObject.transform;*/
-                    generatedBody.celestialBody = generatedBodyGameObject.AddComponent<CelestialBody>();
-                    generatedBody.resources = generatedBodyGameObject.AddComponent<PResource>();
+					GameObject generatedBodyProperties = new GameObject (name);
+					generatedBodyProperties.transform.parent = generatedBodyGameObject.transform;
+                    generatedBody.celestialBody = generatedBodyProperties.AddComponent<CelestialBody>();
+                    generatedBody.resources = generatedBodyProperties.AddComponent<PResource>();
 					generatedBody.celestialBody.progressTree = null;
 
 					// Sensible defaults 

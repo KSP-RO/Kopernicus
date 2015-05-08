@@ -46,7 +46,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CameraFixer.cs" />
+    <Compile Include="SpaceCenterFixer.cs" />
     <Compile Include="Configuration\ModLoader\MapDecalTangent.cs" />
     <Compile Include="Configuration\ModLoader\OceanFX.cs" />
     <Compile Include="Configuration\ModLoader\QuadEnhanceCoast.cs" />

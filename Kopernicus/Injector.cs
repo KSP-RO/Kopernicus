@@ -41,26 +41,7 @@ namespace Kopernicus
 	public class Injector : MonoBehaviour 
 	{
         public Templates templates = null;
-        public NameChanges nameChange = null;
-        static public void DumpUpwards(Transform t, string prefix)
-        {
-            Logger.Default.Log(prefix + "Transform " + t.name);
-            foreach(Component c in t.GetComponents<Component>())
-                Logger.Default.Log(prefix + " has component " + c.name + " of type " + c.GetType().FullName);
-            if(t.parent != null)
-                DumpUpwards(t.parent, prefix + "  ");
-      
-        }
-        static public void DumpDownwards(Transform t, string prefix)
-        {
-            Logger.Default.Log(prefix + "Transform " + t.name);
-            foreach (Component c in t.GetComponents<Component>())
-                Logger.Default.Log(prefix + " has component " + c.name + " of type " + c.GetType().FullName);
-            if(t.childCount >0)
-                for(int i = 0; i < t.childCount; ++i)
-                    DumpDownwards(t.GetChild(i), prefix + "  ");
-
-        }
+        
 		/**
 		 * Awake() is the first function called in the lifecycle of a Unity3D MonoBehaviour.  In the case of KSP,
 		 * it happens to be called right before the game's PSystem is instantiated from PSystemManager.Instance.systemPrefab
@@ -88,9 +69,8 @@ namespace Kopernicus
 			// Get the current time
 			DateTime start = DateTime.Now;
             
-            // Grab templates, create namechanger
+            // Grab templates
             templates = new Templates();
-            nameChange = new NameChanges();
 
 
 			// THIS IS WHERE THE MAGIC HAPPENS - OVERWRITE THE SYSTEM PREFAB SO KSP ACCEPTS OUR CUSTOM SOLAR SYSTEM AS IF IT WERE FROM SQUAD
@@ -99,6 +79,10 @@ namespace Kopernicus
 			// SEARCH FOR THE ARCHIVES CONTROLLER PREFAB AND OVERWRITE IT WITH THE CUSTOM SYSTEM
 			RDArchivesController archivesController = AssetBase.RnDTechTree.GetRDScreenPrefab ().GetComponentsInChildren<RDArchivesController> (true).First ();
 			archivesController.systemPrefab = PSystemManager.Instance.systemPrefab;
+
+            // CBT check
+            Logger.Default.Log("++++++++++++++ CBT check");
+            Utility.CBTCheck(PSystemManager.Instance.systemPrefab.rootBody);
 
             // reparent space center instance
             Logger.Default.Log("Space Center: is it null? " + (SpaceCenter.Instance == null).ToString());
@@ -191,43 +175,86 @@ namespace Kopernicus
 			StarLightSwitcher.HomeStar ().SetAsActive ();
 
             // Space center fix
-            SpaceCenterCameraFixer.pqsName = Templates.instance.homeName;
+            SpaceCenterFixer.pqsName = Templates.instance.homeName;
             if (SpaceCenter.Instance != null)
             {
                 PQS homeP = null;
-                CelestialBody homeB = null;
                 Logger.Default.Log("** Space Center Post-Spawn rehome, finding " + Templates.instance.homeName);
-                foreach (CelestialBody b in FlightGlobals.Bodies)
+                if (FlightGlobals.Bodies != null)
                 {
-                    if (b.bodyName == Templates.instance.homeName)
+                    Logger.Default.Log("Checking FlightGlobals.Bodies");
+                    foreach (CelestialBody b in FlightGlobals.Bodies)
                     {
-                        homeB = b;
-                        homeP = b.pqsController;
+                        Logger.Default.Log("Checking body " + b.bodyName);
+                        if (b.bodyName == Templates.instance.homeName)
+                        {
+                            Logger.Default.Log("Found.");
+                            homeP = b.pqsController;
+                            break;
+                        }
                     }
                 }
-                //DumpUpwards(homeP.transform, "");
-                //ApplyHome(Templates.instance.homeNode, homeP, homeB);
-                PQSCity[] kscs = homeP.GetComponentsInChildren<PQSCity>();
-                PQSCity ksc = null;
-                foreach (PQSCity m in kscs)
+                if (homeP == null)
                 {
-                    if (m.name == "KSC")
+                    Logger.Default.Log("No home PQS found. FlightGlobals.Bodies null or celestial body was renamed.");
+                    PQS[] allPQS = Resources.FindObjectsOfTypeAll<PQS>();
+                    foreach (PQS p in allPQS)
                     {
-                        ksc = m;
-                        break;
+                        if (p.name == Templates.instance.homeName)
+                        {
+                            homeP = p;
+                            break;
+                        }
                     }
                 }
-                SpaceCenter.Instance.transform.SetParent(ksc.transform);
-                try
+                if(homeP != null)
                 {
-                    typeof(SpaceCenter).GetMethod("Start", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(SpaceCenter.Instance, null);
+                    Debug.Log("home PQS found, finding KSC");
+                    //DumpUpwards(homeP.transform, "");
+                    //ApplyHome(Templates.instance.homeNode, homeP, homeB);
+                    //PQSCity[] kscs = homeP.GetComponentsInChildren(typeof(PQSCity), true) as PQSCity[];
+                    PQSCity[] kscs = Resources.FindObjectsOfTypeAll<PQSCity>();
+                    PQSCity ksc = null;
+                    foreach (PQSCity m in kscs)
+                    {
+                        if (m.name == "KSC")
+                        {
+                            if (m.sphere = homeP)
+                            {
+                                ksc = m;
+                                break;
+                            }
+                            else
+                            {
+                                Logger.Default.Log("Found KSC not on this PQS.");
+                                Utility.DumpUpwards(m.transform, "*");
+                            }
+                            
+                        }
+                    }
+                    Debug.Log("Testing KSC");
+                    if (ksc != null)
+                    {
+                        Debug.Log("KSC ok, reparenting.");
+                        try
+                        {
+                            SpaceCenter.Instance.transform.SetParent(ksc.transform);
+                            Debug.Log("Reparented. Starting.");
+                            typeof(SpaceCenter).GetMethod("Start", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(SpaceCenter.Instance, null);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.Log("[Kopernicus]: Failed to start space center, exception " + e);
+                            Logger.Default.Log("SC FAIL ++++++++++++++++++++++++");
+                            Utility.DumpUpwards(SpaceCenter.Instance.transform, "*");
+                        }
+                    }
+                    else
+                        Logger.Default.Log("Could not find KSC");
                 }
-                catch (Exception e)
-                {
-                    Debug.Log("[Kopernicus]: Failed to start space center, exception " + e);
-                    Logger.Default.Log("SC FAIL ++++++++++++++++++++++++");
-                    DumpUpwards(SpaceCenter.Instance.transform, "*");
-                }
+                else
+                    Logger.Default.Log("Still could not find home PQS. Spacecenter not reparented.");
+                
             }
             else
             {
@@ -280,12 +307,12 @@ namespace Kopernicus
                     if (m == ksc)
                     {
                         Logger.Default.Log("***Found home in all PQSCities");
-                        DumpUpwards(m.transform, "-");
+                        Utility.DumpUpwards(m.transform, "-");
                     }
                     else
                     {
                         Logger.Default.Log("***Found another KSC!");
-                        DumpUpwards(m.transform, "-");
+                        Utility.DumpUpwards(m.transform, "-");
                     }
                 }
             }
@@ -294,7 +321,7 @@ namespace Kopernicus
                 ksc.sphere = pqs;
                 ksc.transform.SetParent(pqs.transform);
                 Logger.Default.Log("**** AH setting KSC parent. Tree now:");
-                DumpUpwards(ksc.transform, "*");
+                Utility.DumpUpwards(ksc.transform, "*");
                 if (node.HasNode("KSC"))
                 {
                     if (node.HasValue("order"))
@@ -374,8 +401,8 @@ namespace Kopernicus
                 SpaceCenter sc = scObject.AddComponent<SpaceCenter>();*/
             }
             /*Logger.Default.Log("******** Current homePQS setup");
-            DumpUpwards(pqs.transform, "*");
-            DumpDownwards(pqs.transform, "+");*/
+            Utility.DumpUpwards(pqs.transform, "*");
+            Utility.DumpDownwards(pqs.transform, "+");*/
         }
 	}
 } //namespace
