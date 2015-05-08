@@ -51,6 +51,16 @@ namespace Kopernicus
                 DumpUpwards(t.parent, prefix + "  ");
       
         }
+        static public void DumpDownwards(Transform t, string prefix)
+        {
+            Logger.Default.Log(prefix + "Transform " + t.name);
+            foreach (Component c in t.GetComponents<Component>())
+                Logger.Default.Log(prefix + " has component " + c.name + " of type " + c.GetType().FullName);
+            if(t.childCount >0)
+                for(int i = 0; i < t.childCount; ++i)
+                    DumpDownwards(t.GetChild(i), prefix + "  ");
+
+        }
 		/**
 		 * Awake() is the first function called in the lifecycle of a Unity3D MonoBehaviour.  In the case of KSP,
 		 * it happens to be called right before the game's PSystem is instantiated from PSystemManager.Instance.systemPrefab
@@ -90,18 +100,47 @@ namespace Kopernicus
 			RDArchivesController archivesController = AssetBase.RnDTechTree.GetRDScreenPrefab ().GetComponentsInChildren<RDArchivesController> (true).First ();
 			archivesController.systemPrefab = PSystemManager.Instance.systemPrefab;
 
-			// Clear space center instance so it will accept nouveau Kerbin
-			//SpaceCenter.Instance = null;
-            Logger.Default.Log("*SC* is it null? " + (SpaceCenter.Instance == null).ToString());
+            // reparent space center instance
+            Logger.Default.Log("Space Center: is it null? " + (SpaceCenter.Instance == null).ToString());
             if (SpaceCenter.Instance != null)
             {
                 SpaceCenter sc = SpaceCenter.Instance;
-                Logger.Default.Log("** SpaceCenter");
-                DumpUpwards(sc.transform, "");
+                PQS homePQS = null;
+                bool flag = false;
+                if (FlightGlobals.Bodies != null)
+                    if (FlightGlobals.Bodies.Count > 0)
+                        flag = true;
+                if (flag)
+                {
+                    Logger.Default.Log("Getting from FG");
+                    foreach (CelestialBody b in FlightGlobals.Bodies)
+                        if (b.bodyName == Templates.instance.homeName)
+                        {
+                            homePQS = b.pqsController;
+                            break;
+                        }
+                }
+                else
+                {
+                    PSystemBody homeBody = Utility.FindBody(PSystemManager.Instance.systemPrefab.rootBody, Templates.instance.homeName);
+                    homePQS = homeBody.pqsVersion;
+                }
+                if (homePQS != null)
+                {
+                    Logger.Default.Log("Reparented Space Center to new home pqs");
+                    sc.transform.parent.SetParent(homePQS.transform);
+                }
             }
 
             // Set home stuff
-            ApplyHome(Templates.instance.homeNode, Templates.instance.homePQS, Templates.instance.homeBody);
+            // done on Post-Spawn now - ApplyHome(Templates.instance.homeNode, Templates.instance.homePQS, Templates.instance.homeBody);
+            string home = Templates.instance.homeName;
+            PSystemSetup.Instance.pqsToActivate = home;
+            PSystemSetup.SpaceCenterFacility[] spaceCenterFacilityArray = PSystemSetup.Instance.GetSpaceCenterFacilities();
+            foreach (PSystemSetup.SpaceCenterFacility scf in spaceCenterFacilityArray)
+            {
+                scf.pqsName = home;
+            }
 
 			// Add a handler so that we can do post spawn fixups.  
 			PSystemManager.Instance.OnPSystemReady.Add(PostSpawnFixups);
@@ -115,6 +154,7 @@ namespace Kopernicus
 		// Post spawn fixups (ewwwww........)
 		public void PostSpawnFixups ()
 		{
+            Debug.Log("[Kopernicus]: Post-Spawn");
 			// Fix the flight globals index of each body
 			int counter = 0;
 			foreach (CelestialBody body in FlightGlobals.Bodies) 
@@ -150,6 +190,51 @@ namespace Kopernicus
 			// Select the closest star to home
 			StarLightSwitcher.HomeStar ().SetAsActive ();
 
+            // Space center fix
+            SpaceCenterCameraFixer.pqsName = Templates.instance.homeName;
+            if (SpaceCenter.Instance != null)
+            {
+                PQS homeP = null;
+                CelestialBody homeB = null;
+                Logger.Default.Log("** Space Center Post-Spawn rehome, finding " + Templates.instance.homeName);
+                foreach (CelestialBody b in FlightGlobals.Bodies)
+                {
+                    if (b.bodyName == Templates.instance.homeName)
+                    {
+                        homeB = b;
+                        homeP = b.pqsController;
+                    }
+                }
+                //DumpUpwards(homeP.transform, "");
+                //ApplyHome(Templates.instance.homeNode, homeP, homeB);
+                PQSCity[] kscs = homeP.GetComponentsInChildren<PQSCity>();
+                PQSCity ksc = null;
+                foreach (PQSCity m in kscs)
+                {
+                    if (m.name == "KSC")
+                    {
+                        ksc = m;
+                        break;
+                    }
+                }
+                SpaceCenter.Instance.transform.SetParent(ksc.transform);
+                try
+                {
+                    typeof(SpaceCenter).GetMethod("Start", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(SpaceCenter.Instance, null);
+                }
+                catch (Exception e)
+                {
+                    Debug.Log("[Kopernicus]: Failed to start space center, exception " + e);
+                    Logger.Default.Log("SC FAIL ++++++++++++++++++++++++");
+                    DumpUpwards(SpaceCenter.Instance.transform, "*");
+                }
+            }
+            else
+            {
+                Debug.Log("[Kopernicus]: Post-Spawn, no spacecenter");
+                Logger.Default.Log("*** NO SPACE CENTER ****");
+            }
+
 			// Fixups complete, time to surrender to fate
 			Destroy (this);
 		}
@@ -183,13 +268,33 @@ namespace Kopernicus
                 Logger.Default.Log("ApplyHome: Templates null!");
                 return;
             }
+
+            Debug.Log("**AH No nulls");
             Logger.Default.Log("Applying home to body " + body.name);
             PQSCity ksc = Templates.instance.ksc;
+            PQSCity[] others = Resources.FindObjectsOfTypeAll<PQSCity>().ToArray();
+            foreach (PQSCity m in others)
+            {
+                if (m.name == "KSC")
+                {
+                    if (m == ksc)
+                    {
+                        Logger.Default.Log("***Found home in all PQSCities");
+                        DumpUpwards(m.transform, "-");
+                    }
+                    else
+                    {
+                        Logger.Default.Log("***Found another KSC!");
+                        DumpUpwards(m.transform, "-");
+                    }
+                }
+            }
             if (ksc != null)
             {
                 ksc.sphere = pqs;
-                ksc.transform.parent = pqs.transform;
-                PSystemSetup.Instance.pqsToActivate = pqs.gameObject.name;
+                ksc.transform.SetParent(pqs.transform);
+                Logger.Default.Log("**** AH setting KSC parent. Tree now:");
+                DumpUpwards(ksc.transform, "*");
                 if (node.HasNode("KSC"))
                 {
                     if (node.HasValue("order"))
@@ -231,19 +336,33 @@ namespace Kopernicus
                         bool.TryParse(node.GetValue("repositionToSphereSurface"), out ksc.repositionToSphereSurface);
                     if (node.HasValue("repositionToSphereSurfaceAddHeight"))
                         bool.TryParse(node.GetValue("repositionToSphereSurfaceAddHeight"), out ksc.repositionToSphereSurfaceAddHeight);
-
                     ksc.Orientate();
                 }
             }
             else
                 Logger.Default.Log("No KSC!");
+
+            Logger.Default.Log("**AH Space center time");
             if (SpaceCenter.Instance != null)
             {
-                Debug.Log("[Kopernicus]: Setting spacecenter");
+                Logger.Default.Log("[Kopernicus]: Setting spacecenter");
                 SpaceCenter sc = SpaceCenter.Instance;
-                sc.transform.parent = sc.SpaceCenterTransform.parent = pqs.transform;
-                sc.transform.position = ksc.transform.position;
-                sc.transform.rotation = ksc.transform.rotation;
+                if (sc != null)
+                {
+                    Logger.Default.Log("**AH SC not null");
+                    if (sc.transform != null)
+                    {
+                        Logger.Default.Log("**AH SC xform not null");
+                        if (sc.transform.parent != null)
+                            Logger.Default.Log("*AH SC parent is " + sc.transform.parent.name);
+                        Logger.Default.Log("*AH SC gameobject is ? " + (sc.gameObject == null ? "Null" : "OK"));
+                        if(sc.gameObject != null)
+                            if (Part.GetComponentUpwards<CelestialBody>(sc.gameObject) == null)
+                                Logger.Default.Log("No CB going upwards!");
+                    }
+                    else
+                        Logger.Default.Log("SpaceCenter transform is null, can't change.");
+                }
             }
             else
             {
@@ -254,6 +373,9 @@ namespace Kopernicus
                 GameObject.DontDestroyOnLoad(scObject);
                 SpaceCenter sc = scObject.AddComponent<SpaceCenter>();*/
             }
+            /*Logger.Default.Log("******** Current homePQS setup");
+            DumpUpwards(pqs.transform, "*");
+            DumpDownwards(pqs.transform, "+");*/
         }
 	}
 } //namespace

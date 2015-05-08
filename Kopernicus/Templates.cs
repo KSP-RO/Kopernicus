@@ -9,20 +9,28 @@ namespace Kopernicus
     public class Templates
     {
         static public Templates instance = null;
-        public PQSCity ksc = null;
-        public PQS pqsOcean = null;
-        public PQS pqs = null;
-        public GameObject corona;
+        
+        // for loading only one each
         public Dictionary<string, MapSO> mapsGray;
         public Dictionary<string, MapSO> mapsRGB;
 
+        // Home-related stuff
         public ConfigNode homeNode;
         public CelestialBody homeBody;
         public PQS homePQS;
+        public string homeName;
+        public PQSCity ksc = null;
         public Dictionary<string, NameChanger> nameChanger;
+        public GameObject spaceCenterGO;
+
+        // PQS etc
+        public PQS pqsOcean = null;
+        public PQS pqs = null;
+        public GameObject corona;
 
         // PQSmods
         public PQSMod_VoronoiCraters voronoiCraters;
+        
         
         public Templates()
         {
@@ -60,6 +68,10 @@ namespace Kopernicus
                     Logger.Default.Log("Found KSC");
                     break;
                 }
+            }
+            if (ksc != null)
+            {
+                //ksc.transform.FindChild(S
             }
 
             mapsGray = new Dictionary<string, MapSO>();

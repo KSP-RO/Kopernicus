@@ -161,9 +161,12 @@ namespace Kopernicus
                         {
                             foreach (PQS PQSocean in generatedBody.pqsVersion.GetComponentsInChildren<PQS>(true))
                             {
-                                if (PQSocean.name == name + "Ocean")
+                                if (PQSocean.name == template.body.name + "Ocean")
                                 {
                                     ocean = new OceanPQS(PQSocean);
+                                    ocean.oceanPQS.name = name;
+                                    ocean.oceanPQS.gameObject.name = name;
+                                    ocean.oceanPQS.transform.name = name;
                                     break;
                                 }
                             }
@@ -184,10 +187,10 @@ namespace Kopernicus
 					generatedBody.flightGlobalsIndex = 0;
 
 					// Create the celestial body
-					GameObject generatedBodyProperties = new GameObject (name);
-					generatedBodyProperties.transform.parent = generatedBodyGameObject.transform;
-					generatedBody.celestialBody = generatedBodyProperties.AddComponent<CelestialBody> ();
-					generatedBody.resources = generatedBodyProperties.AddComponent<PResource> ();
+					/*GameObject generatedBodyProperties = new GameObject (name);
+					generatedBodyProperties.transform.parent = generatedBodyGameObject.transform;*/
+                    generatedBody.celestialBody = generatedBodyGameObject.AddComponent<CelestialBody>();
+                    generatedBody.resources = generatedBodyGameObject.AddComponent<PResource>();
 					generatedBody.celestialBody.progressTree = null;
 
 					// Sensible defaults 
@@ -225,6 +228,7 @@ namespace Kopernicus
                 {
                     Logger.Default.Log("Found homeworld! Body " + name);
                     Templates.instance.homeNode = node;
+                    Templates.instance.homeName = name;
                     Templates.instance.homeBody = generatedBody.celestialBody;
                     Templates.instance.homePQS = pqs.pqsVersion;
                 }

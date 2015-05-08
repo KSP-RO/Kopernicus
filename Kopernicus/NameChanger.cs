@@ -41,6 +41,7 @@ namespace Kopernicus
 
         public void Apply()
         {
+            Logger.Default.Log("Applying name change of " + oldName + " => " + newName);
             foreach (Component c in components)
                 if(c != null)
                     c.name = c.name.Replace(oldName, newName);
@@ -111,7 +112,7 @@ namespace Kopernicus
         public void Start()
         {
             //Dumps
-            PQSCity ksc = null;
+            /*PQSCity ksc = null;
             foreach (PQSCity p in Resources.FindObjectsOfTypeAll<PQSCity>())
             {
                 if (p.name == "KSC")
@@ -126,7 +127,12 @@ namespace Kopernicus
                 Logger.Default.Log("Transform = transform of go? " + (ksc.gameObject.transform == ksc.transform ? "Yes" : "No"));
                 Logger.Default.Log("Transform name = " + ksc.transform.name + ", go name " + ksc.gameObject.name);
                 Injector.DumpUpwards(ksc.transform, "*");
+                //Injector.DumpDownwards(ksc.transform, "+");
+                Logger.Default.Log("***********************************************");
+                Logger.Default.Log("PQS:");
+                Injector.DumpDownwards(ksc.sphere.transform, "+");
             }
+
             if (SpaceCenter.Instance != null)
             {
                 SpaceCenter sc = SpaceCenter.Instance;
@@ -134,7 +140,18 @@ namespace Kopernicus
                 Logger.Default.Log("Transform = transform of go? " + (sc.gameObject.transform == sc.transform ? "Yes" : "No"));
                 Logger.Default.Log("Transform name = " + sc.transform.name + ", go name " + sc.gameObject.name);
                 Injector.DumpUpwards(sc.transform, "*");
+                Injector.DumpDownwards(sc.transform, "+");
             }
+            PSystemSetup.SpaceCenterFacility[] arr = PSystemSetup.Instance.GetSpaceCenterFacilities();
+            if(arr != null)
+            {
+                foreach(PSystemSetup.SpaceCenterFacility scf in arr)
+                {
+                    Logger.Default.Log("Found Facility " + scf.facilityName + ", name " + scf.name);
+                    Injector.DumpUpwards(scf.facilityTransform, "*");
+                }
+            }*/
+
             if (NameChanges.instance == null)
             {
                 Debug.Log("*NameChanger* ERROR instance is null!");
